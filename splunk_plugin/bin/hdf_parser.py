@@ -11,6 +11,7 @@ import time
 import copy
 # from typing import List, Tuple
 from datetime import datetime
+from util import compute_status, is_waived
 import random
 
 try:
@@ -170,6 +171,10 @@ def construct_control_event(meta, control):  # -> str:
     control_event_meta = copy.copy(meta)
     control_event_meta["subtype"] = "control"
 
+    # Add status / waived
+    control_event_meta["status"] = compute_status(control)
+    control_event_meta["waived"] = is_waived(control)
+
     # Add meta to the control
     control["meta"] = control_event_meta
     return json.dumps(control)
@@ -178,16 +183,17 @@ def construct_control_event(meta, control):  # -> str:
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
-    if len(sys.argv) != 2:
-        logger.error('Usage ./hdf_parser.py input_json_file')
+    if len(sys.argv) < 2:
+        logger.error('Usage ./hdf_parser.py input_json_file_1 [input_json_file_2] [...]')
         sys.exit(1)
 
-    input_filename = sys.argv[1]
-    logger.info('\nProcessing File {}'.format(input_filename))
-    with open(input_filename, 'r') as f:
-        data = json.load(f)
+    input_filenames = sys.argv[1:]
+    for input_filename in input_filenames:
+        logger.info('\nProcessing File {}'.format(input_filename))
+        with open(input_filename, 'r') as f:
+            data = json.load(f)
 
-    hdf = HDF(data, input_filename)
-    hdf.parse()
-    logger.info('Extracted events:')
-    hdf.print_events()
+        hdf = HDF(data, input_filename)
+        hdf.parse()
+        logger.info('Extracted events:')
+        hdf.print_events()
