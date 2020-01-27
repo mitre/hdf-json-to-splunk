@@ -11,6 +11,7 @@ metadata/local.meta
 
 # Other
 *.ignored
+splunk_plugin/pickup/*
 
 # OSX
 # General

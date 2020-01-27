@@ -1,0 +1,74 @@
+{
+    "meta": {
+        // See Report schema for description,
+        "guid": "bXZNMQ3mNOs2PvHFv6Ze48RCdxI2FM",
+        // See Report schema for description
+        "filename": "evaluation | profile",
+        // See Report schema for description
+        "filetype": "",
+        // This identifies this event as a control event. Note the matching meta field in other event types
+        "subtype": "control",
+        // See Profile for description. Included here so that this control can be associated with its parent profile
+        "profile_sha256": "4bd9e49391dfd78bec6feeafbe8d212581daac43fcb734473d8eff86c863e219",
+        // The ID of the control. Copied from the main structurem similar to how profile meta includes sha256
+        "control_id": "E.g. control_12",
+        // See Report schema for description
+        "parse_time": "",
+        // See Report schema for description
+        "start_time": "",
+        // See Report schema for description
+        "hdf_splunk_schema": "",
+        // The controls computed status, based on result statuses. See https://github.com/mitre/inspecjs/blob/master/src/compat_wrappers.ts for explanation
+        "status": "Passed | Failed | Not Applicable | Not Reviewed | Profile Error",
+        // Whether or not this control was waived
+        "is_waived": true, // or false
+        // Whether this control is the baseline - IE, is it an overlay of a different control in this file?. Can differ from its containing profiles is_baseline
+        "is_baseline": true // or false!
+    },
+    "code": "The code for the control, not including over/underlays!",
+    "desc": "The description of the control",
+    "descriptions": [
+        {
+            "label": "<The description label>",
+            "data": "<The description entry>"
+        }
+        // Repeated for as many specific descriptions are desired
+    ],
+    "id": "Control id",
+    // Control impact, from 0.0 to 1.0
+    "impact": 0.0,
+    "refs": [
+        // Inspec refs, as defined in profile.
+    ],
+    "results": [
+        {
+            "code_desc": "Description of the control",
+            "run_time": 1.234, // How many seconds it took to run
+            "start_time": "Timestamp in ISO format - e.g. 2018-11-21T11:34:45-05:00",
+            // The result of the control - did the test pass, fail, or was it ignored?
+            "status": "passed | failed | passed"
+        }
+        // Repeated for as many control block results there are
+    ],
+    "source_location": {
+        // The line number at which it was found in the given file
+        "line": 0,
+        "ref": "The filepath to the .rb file that contains the control"
+    },
+    "tags": {
+        // The check text. Usually present but not guaranteed.
+        "check": "Is there \"problem\"?",
+        //The fix text. Usually present but again, not guaranteed.
+        "fix": "Delete \"problem\"",
+        "nist": [
+            // The actual nist tag (s). AC-1 provided as an example
+            "AC-1",
+            // Note that there can be multiple, and they can contain enhancements
+            "AT-1 (c)",
+            // Typically, the last tag is the revision
+            "Rev_4"
+        ],
+        "other_tags": "There can be as many or as few tags as the profile developer wishes"
+        // ...
+    }
+}

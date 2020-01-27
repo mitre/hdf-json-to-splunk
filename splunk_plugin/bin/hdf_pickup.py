@@ -26,7 +26,7 @@ class HDFScript(Script):
         """ Returns scheme for input config """
         scheme = Scheme("HDF Parser Input")
         scheme.description = "Monitor a directory for any HDF json files, parse and delete"
-        scheme.use_external_validtion = True
+        scheme.use_external_validation = True
         # Script will be called for each input separately
         scheme.use_single_instance = False
 

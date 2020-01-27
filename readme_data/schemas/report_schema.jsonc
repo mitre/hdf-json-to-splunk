@@ -1,0 +1,30 @@
+{
+    "meta": {
+        // The Globally Unique Identifier string tying all events in this file together. Keying on this is the best way to get all events in a single execution.",
+        "guid": "bXZNMQ3mNOs2PvHFv6Ze48RCdxI2FM",
+        // The name of the file that was consumed to produce this event.
+        "filename": "E.g. my_profile_results.json",
+        // Whether this was the result of inspec exec <profile> or inspec json <profile>, respectively.
+        "filetype": "evaluation | profile",
+        // This identifies this event as a header event. Note the matching meta field in other event types.
+        "subtype": "header",
+        // When it was parsed/ingested into the splunk app, in ISO time format. NOT when the profile was started!
+        "parse_time": "2020-01-23T01:07:18.795438",
+        // The start time of the profile in ISO format, as given by Inspec. Not guaranteed to be present (if no results)
+        "start_time": "2020-01-23T01:07:18.795438",
+        // the version of the schema used to produce this event.
+        "hdf_splunk_schema": "1.0"
+    },
+    "statistics": {
+        // How long this evaluation run took, in seconds
+        "duration": 0.501324
+    },
+    "platform": {
+        // The platform release version
+        "release": "18.2.0",
+        // The platform name
+        "name": "mac_os_x"
+    },
+    // The version of inspec that generated this file
+    "version": "3.0.52"
+}
