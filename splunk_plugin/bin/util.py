@@ -1,6 +1,6 @@
 def compute_status(control):
     '''
-    Returns the status for the control
+    Returns the status for the control, as a str
     See https://github.com/mitre/inspecjs/blob/master/src/compat_wrappers.ts for origin of this output spec
     '''
     try:
@@ -8,7 +8,12 @@ def compute_status(control):
         results = control["results"]
 
         # Get statuses
-        status_list = [r["status"] for r in results]
+        status_list = []
+        for r in results:
+            if r.get("backtrace"):
+                status_list.append("error")
+            else:
+                status_list.append(r.get("status") or "no_status")
 
         # Determine fate based on statuses
         if "error" in status_list:
@@ -32,10 +37,33 @@ def compute_status(control):
 
 def is_waived(control):
     '''
-    Returns whether this control has been waived.
+    Returns whether this control has been waived, as a bool
     That is, whether it has a defined "waiver_data" field and said field has a value of True in "skipped_due_to_waiver"
     '''
     try:
         return bool(control["waiver_data"]["skipped_due_to_waiver"])
     except KeyError:
         return False
+
+
+def is_baseline(profile):
+    '''
+    Returns a boolean declaring whether this profile is a baseline profile in this report.
+    '''
+    return "depends" not in profile or profile["depends"] == []
+
+
+def find_direct_underlying_profiles(execution, profile):
+    '''
+    Searches execution to find all profiles that are directly depended on by the specified profile.
+    Returns them as they are in the parsed json object.
+    '''
+    if "profiles" not in execution:
+        return []
+
+    result = []
+    profile_name = profile["name"]
+    for profile in execution["profiles"]:
+        if profile.get("parent_profile") == profile_name:
+            result.append(profile)
+    return result

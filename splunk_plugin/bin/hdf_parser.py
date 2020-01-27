@@ -11,7 +11,7 @@ import time
 import copy
 # from typing import List, Tuple
 from datetime import datetime
-from util import compute_status, is_waived
+from util import compute_status, is_waived, is_baseline, find_direct_underlying_profiles
 import random
 
 try:
@@ -32,6 +32,9 @@ class HDF:
         self.parse_time = None
         self.start_time = None
 
+        # Our status counts, built as we parse
+        self.counts = None
+
     @property
     def events(self):  # -> List[str]:
         if self._events is None:
@@ -45,6 +48,9 @@ class HDF:
         # Get copy and init list. This is done so accidentally parsing twice won't break everything
         data = copy.copy(self.hdf)
         events = []
+
+        # Reset counts
+        self.counts = {}
 
         # Set the parse time
         self.parse_time = datetime.now().isoformat()
@@ -106,7 +112,7 @@ class HDF:
 
             # Then each profile in turn
             for profile in profiles:
-                profile_event, profile_control_events = construct_profile_events(
+                profile_event, profile_control_events = self.construct_profile_events(
                     meta, profile)
                 events.append(profile_event)
                 events += profile_control_events
@@ -116,7 +122,7 @@ class HDF:
             meta["filetype"] = "profile"
 
             # Decompose the singular profile
-            profile_event, control_events = construct_profile_events(
+            profile_event, control_events = self.construct_profile_events(
                 meta, data)
             events.append(profile_event)
             events += control_events
@@ -128,72 +134,122 @@ class HDF:
         for event in self.events:
             logger.info('\n' + json.dumps(event, indent=2, sort_keys=True))
 
+    # -> Tuple[str, List[str]]:
+    def construct_profile_events(self, meta, profile):
+        '''
+        Constructs an event string for the profile body,
+        as well as a list of control event strings for each control within.
+        Returns in the format
+        profile_event, control_events[]
+        '''
+        # Copy our meta, and label it with the sha256
+        meta = copy.copy(meta)
+        meta["profile_sha256"] = profile["sha256"]
 
-def construct_profile_events(meta, profile):  # -> Tuple[str, List[str]]:
-    '''
-    Constructs an event string for the profile body, 
-    as well as a list of control event strings for each control within.
-    Returns in the format
-    profile_event, control_events[]
-    '''
-    # Copy our meta, and label it with the sha256
-    meta = copy.copy(meta)
-    meta["profile_sha256"] = profile["sha256"]
+        # Discover the profile children
+        profile_children = find_direct_underlying_profiles(self.hdf, profile)
 
-    # Now pluck the controls
-    controls = profile["controls"]
-    profile["controls"] = []
+        # Now pluck the controls
+        controls = profile["controls"]
+        profile["controls"] = []
 
-    # Create yet another meta for the profile, so that we can label
-    # labelling its subtype (and potentially more attributes later down the line)
-    profile_event_meta = copy.copy(meta)
-    profile_event_meta["subtype"] = "profile"
+        # Create yet another meta for the profile, so that we can label
+        # labelling its subtype, baseline status
+        profile_event_meta = copy.copy(meta)
+        profile_event_meta["subtype"] = "profile"
+        profile_event_meta["is_baseline"] = is_baseline(profile)
 
-    # Set the meta and build the profile event
-    profile["meta"] = profile_event_meta
-    profile_event = json.dumps(profile)
+        # Set the meta and build the profile event
+        profile["meta"] = profile_event_meta
+        profile_event = json.dumps(profile)
 
-    # Generate the control events
-    control_events = [construct_control_event(meta, c) for c in controls]
+        # Generate the control events
+        control_events = [self.construct_control_event(
+            meta, profile, c, profile_children) for c in controls]
 
-    return profile_event, control_events
+        return profile_event, control_events
 
+    # -> str:
+    def construct_control_event(self, meta, profile, control, profile_direct_children):
+        '''
+        Constructs an event string for the control body
+        '''
+        # Copy our meta, and label it with the control id
+        meta = copy.copy(meta)
+        meta["control_id"] = control["id"]
 
-def construct_control_event(meta, control):  # -> str:
-    '''
-    Constructs an event string for the control body
-    '''
-    # Copy our meta, and label it with the control id
-    meta = copy.copy(meta)
-    meta["control_id"] = control["id"]
+        # And, though this is not yet strictly necessary
+        control_event_meta = copy.copy(meta)
+        control_event_meta["subtype"] = "control"
 
-    # And, though this is not yet strictly necessary
-    control_event_meta = copy.copy(meta)
-    control_event_meta["subtype"] = "control"
+        # Add status / waived
+        status = compute_status(control)
+        control_event_meta["status"] = status
+        control_event_meta["waived"] = is_waived(control)
 
-    # Add status / waived
-    control_event_meta["status"] = compute_status(control)
-    control_event_meta["waived"] = is_waived(control)
+        # Compute if baseline. Do this by checking if any of our covered profiles contained this control id
+        is_baseline = True
+        for child in profile_direct_children:
+            for child_control in child["controls"]:
+                if child_control["id"] == control["id"]:
+                    is_baseline = False
 
-    # Add meta to the control
-    control["meta"] = control_event_meta
-    return json.dumps(control)
+        # Add if baseline
+        control_event_meta["is_baseline"] = is_baseline
+
+        # Count status if not baseline
+        if is_baseline:
+            self.counts[status] = self.counts.get(status, 0) + 1
+
+        # Add meta to the control
+        control["meta"] = control_event_meta
+        return json.dumps(control)
 
 
 if __name__ == "__main__":
+    # We don't care about anything below this, really
     logging.basicConfig(level=logging.INFO)
 
     if len(sys.argv) < 2:
-        logger.error('Usage ./hdf_parser.py input_json_file_1 [input_json_file_2] [...]')
+        logger.error(
+            'Usage ./hdf_parser.py input_json_file_1 [input_json_file_2] [...]')
         sys.exit(1)
 
     input_filenames = sys.argv[1:]
     for input_filename in input_filenames:
         logger.info('\nProcessing File {}'.format(input_filename))
+        # Read the file as json
         with open(input_filename, 'r') as f:
-            data = json.load(f)
+            try:
+                data = json.load(f)
+            except:
+                logger.error('\nFailed to parse file to json\n')
+                continue
 
-        hdf = HDF(data, input_filename)
-        hdf.parse()
-        logger.info('Extracted events:')
-        hdf.print_events()
+        # Parse to HDF
+        try:
+            hdf = HDF(data, input_filename)
+            hdf.parse()
+        except KeyError as e:
+            logger.exception('\nFailed to parse file as HDF\n')
+            continue
+        count_filename = input_filename.replace(
+            "raw_data", "counts") + ".info.counts"
+
+        # Try to find a counts file and compare to our results
+        try:
+            with open(count_filename, 'r') as f:
+                count_data = json.load(f)
+                # print(hdf.counts)
+                # print(dict((k, count_data[k]["total"]) for k in count_data))
+                if (count_data["failed"]["total"] == hdf.counts.get("Failed", 0)
+                    and count_data["passed"]["total"] == hdf.counts.get("Passed", 0)
+                    and count_data["no_impact"]["total"] == hdf.counts.get("Not Applicable", 0)
+                    and count_data["skipped"]["total"] == hdf.counts.get("Not Reviewed", 0)
+                        and count_data["error"]["total"] == hdf.counts.get("Profile Error", 0)):
+                    print("COUNTING PASSED")
+                else:
+                    print("COUNTING FAILED TO MATCH EXPECTED")
+                    print(input_filename)
+        except IOError:
+            print("Unable to find counts")

@@ -95,7 +95,9 @@ These steps require you to be an admin.
         // See Report schema for description
         "start_time": "",
         // See Report schema for description
-        "hdf_splunk_schema": ""
+        "hdf_splunk_schema": "",
+        // Whether this profile is a baseline - IE, is it being overlayed in this report? Based on depends
+        "is_baseline": true // or false!
     },
     "summary": "The profile summary",
     "sha256": "The profile sha hash",
@@ -185,13 +187,15 @@ ${
         // The controls computed status, based on result statuses. See https://github.com/mitre/inspecjs/blob/master/src/compat_wrappers.ts for explanation
         "status": "Passed | Failed | Not Applicable | Not Reviewed | Profile Error",
         // Whether or not this control was waived
-        "wavied": "true | false"
+        "waived": "true | false",
+        // Whether this control is the baseline - IE, is it an overlay of a different control in this file?. Can differ from its containing profiles is_baseline
+        "is_baseline": true // or false!
     },
     "code": "The code for the control, not including over/underlays!",
     "desc": "The description of the control",
     "descriptions": [
         {
-            "labal": "<The description label>",
+            "label": "<The description label>",
             "data": "<The description entry>"
         }
         // Repeated for as many specific descriptions are desired
