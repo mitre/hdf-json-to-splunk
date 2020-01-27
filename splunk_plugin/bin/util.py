@@ -46,7 +46,7 @@ def is_waived(control):
         return False
 
 
-def is_baseline(profile):
+def is_baseline_profile(profile):
     '''
     Returns a boolean declaring whether this profile is a baseline profile in this report.
     '''

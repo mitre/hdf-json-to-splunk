@@ -23,7 +23,7 @@ These steps require you to be an admin.
 ### Feeding the plugin new data:
  * The plugin will consume and *and delete* any json file put into its `pickup` directory.
  * This directory, if installed via the method above, will be at `/opt/splunk/etc/apps/hdf_splunk_plugin/pickup/` on your splunk server instance.
- * Essentially any method of putting files into that folder - scp, ftp, etc - will work. 
+ * Essentially any method of putting files into that folder - scp, ftp, etc - will work.
  * As a simple not-build-for-production example, we have included the file `s3_sync_cron.sh`, which if enabled via a cron job will fetch all files from that bucket and feed them into the splunk pickup directory.
 
 ### Reading this data back out in Heimdall Lite:
@@ -40,7 +40,7 @@ These steps require you to be an admin.
 
 ### Data Structure produced by the converter
 
-#### Execution Report Header Event structure  
+#### Execution Report Header Event structure
 
 ```jsonc
 {
@@ -75,7 +75,7 @@ These steps require you to be an admin.
 }
 ```
 
-#### Profile Event structure  
+#### Profile Event structure
 
 ```jsonc
 {
@@ -96,8 +96,8 @@ These steps require you to be an admin.
         "start_time": "",
         // See Report schema for description
         "hdf_splunk_schema": "",
-        // Whether this profile is a baseline - IE, is it being overlayed in this report? Based on depends
-        "is_baseline": true // or false!
+        // Whether this profile is a baseline - IE, is it being overlayed in this report?
+        "is_baseline": true // or false
     },
     "summary": "The profile summary",
     "sha256": "The profile sha hash",
@@ -161,7 +161,7 @@ These steps require you to be an admin.
 }
 ```
 
-#### Control Event structure  
+#### Control Event structure
 
 ```jsonc
 ${
@@ -187,7 +187,7 @@ ${
         // The controls computed status, based on result statuses. See https://github.com/mitre/inspecjs/blob/master/src/compat_wrappers.ts for explanation
         "status": "Passed | Failed | Not Applicable | Not Reviewed | Profile Error",
         // Whether or not this control was waived
-        "waived": "true | false",
+        "is_waived": true, // or false
         // Whether this control is the baseline - IE, is it an overlay of a different control in this file?. Can differ from its containing profiles is_baseline
         "is_baseline": true // or false!
     },

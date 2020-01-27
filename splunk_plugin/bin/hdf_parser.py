@@ -11,7 +11,7 @@ import time
 import copy
 # from typing import List, Tuple
 from datetime import datetime
-from util import compute_status, is_waived, is_baseline, find_direct_underlying_profiles
+from util import compute_status, is_waived, is_baseline_profile, find_direct_underlying_profiles
 import random
 
 try:
@@ -46,7 +46,7 @@ class HDF:
         Parses hdf data into a list of events, and stores them into this objects events property
         """
         # Get copy and init list. This is done so accidentally parsing twice won't break everything
-        data = copy.copy(self.hdf)
+        data = copy.deepcopy(self.hdf)
         events = []
 
         # Reset counts
@@ -104,7 +104,7 @@ class HDF:
 
             # Make an event from the body
             # Copy the meta for local modification
-            eval_event_meta = copy.copy(meta)
+            eval_event_meta = copy.deepcopy(meta)
             eval_event_meta["subtype"] = "header"
             data["meta"] = eval_event_meta
             eval_event = json.dumps(data)
@@ -143,7 +143,7 @@ class HDF:
         profile_event, control_events[]
         '''
         # Copy our meta, and label it with the sha256
-        meta = copy.copy(meta)
+        meta = copy.deepcopy(meta)
         meta["profile_sha256"] = profile["sha256"]
 
         # Discover the profile children
@@ -155,9 +155,9 @@ class HDF:
 
         # Create yet another meta for the profile, so that we can label
         # labelling its subtype, baseline status
-        profile_event_meta = copy.copy(meta)
+        profile_event_meta = copy.deepcopy(meta)
         profile_event_meta["subtype"] = "profile"
-        profile_event_meta["is_baseline"] = is_baseline(profile)
+        profile_event_meta["is_baseline"] = is_baseline_profile(profile)
 
         # Set the meta and build the profile event
         profile["meta"] = profile_event_meta
@@ -175,17 +175,17 @@ class HDF:
         Constructs an event string for the control body
         '''
         # Copy our meta, and label it with the control id
-        meta = copy.copy(meta)
+        meta = copy.deepcopy(meta)
         meta["control_id"] = control["id"]
 
         # And, though this is not yet strictly necessary
-        control_event_meta = copy.copy(meta)
+        control_event_meta = copy.deepcopy(meta)
         control_event_meta["subtype"] = "control"
 
         # Add status / waived
         status = compute_status(control)
         control_event_meta["status"] = status
-        control_event_meta["waived"] = is_waived(control)
+        control_event_meta["is_waived"] = is_waived(control)
 
         # Compute if baseline. Do this by checking if any of our covered profiles contained this control id
         is_baseline = True

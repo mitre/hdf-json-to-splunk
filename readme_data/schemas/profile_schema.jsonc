@@ -16,8 +16,8 @@
         "start_time": "",
         // See Report schema for description
         "hdf_splunk_schema": "",
-        // Whether this profile is a baseline - IE, is it being overlayed in this report? Based on depends
-        "is_baseline": true // or false!
+        // Whether this profile is a baseline - IE, is it being overlayed in this report?
+        "is_baseline": true // or false
     },
     "summary": "The profile summary",
     "sha256": "The profile sha hash",

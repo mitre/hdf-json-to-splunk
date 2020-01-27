@@ -21,7 +21,7 @@
         // The controls computed status, based on result statuses. See https://github.com/mitre/inspecjs/blob/master/src/compat_wrappers.ts for explanation
         "status": "Passed | Failed | Not Applicable | Not Reviewed | Profile Error",
         // Whether or not this control was waived
-        "waived": "true | false",
+        "is_waived": true, // or false
         // Whether this control is the baseline - IE, is it an overlay of a different control in this file?. Can differ from its containing profiles is_baseline
         "is_baseline": true // or false!
     },
