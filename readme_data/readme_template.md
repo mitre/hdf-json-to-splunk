@@ -55,7 +55,7 @@ These steps require you to be an admin.
 #### Control Event structure
 
 ```jsonc
-${control_schema}
+{control_schema}
 ```
 
 ### NOTICE
