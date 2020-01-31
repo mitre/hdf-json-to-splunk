@@ -208,22 +208,21 @@ class HDF:
 
 if __name__ == "__main__":
     # We don't care about anything below this, really
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.WARNING)
 
     if len(sys.argv) < 2:
-        logger.error(
-            'Usage ./hdf_parser.py input_json_file_1 [input_json_file_2] [...]')
+        logger.error('Usage ./hdf_parser.py input_json_file_1 [input_json_file_2] [...]')
         sys.exit(1)
 
     input_filenames = sys.argv[1:]
     for input_filename in input_filenames:
-        logger.info('\nProcessing File {}'.format(input_filename))
+        print(' >>> Processing File {}'.format(input_filename))
         # Read the file as json
         with open(input_filename, 'r') as f:
             try:
                 data = json.load(f)
             except:
-                logger.error('\nFailed to parse file to json\n')
+                logger.exception('\n !!! Failed to parse file to json !!! \n')
                 continue
 
         # Parse to HDF
@@ -231,25 +230,34 @@ if __name__ == "__main__":
             hdf = HDF(data, input_filename)
             hdf.parse()
         except KeyError as e:
-            logger.exception('\nFailed to parse file as HDF\n')
+            logger.exception('\n !!! Failed to parse file as HDF !!! \n')
             continue
-        count_filename = input_filename.replace(
-            "raw_data", "counts") + ".info.counts"
+
+        # Derive the count filename. This sort of assumes the user is using the count data testing set
+        count_filename = input_filename.replace("/raw_data/", "/counts/") + ".info.counts"
 
         # Try to find a counts file and compare to our results
         try:
             with open(count_filename, 'r') as f:
+                count_map = {
+                    "failed": "Failed",
+                    "passed": "Passed",
+                    "no_impact": "Not Applicable",
+                    "skipped": "Not Reviewed",
+                    "error": "Profile Error",
+                }
                 count_data = json.load(f)
-                # print(hdf.counts)
-                # print(dict((k, count_data[k]["total"]) for k in count_data))
-                if (count_data["failed"]["total"] == hdf.counts.get("Failed", 0)
-                    and count_data["passed"]["total"] == hdf.counts.get("Passed", 0)
-                    and count_data["no_impact"]["total"] == hdf.counts.get("Not Applicable", 0)
-                    and count_data["skipped"]["total"] == hdf.counts.get("Not Reviewed", 0)
-                        and count_data["error"]["total"] == hdf.counts.get("Profile Error", 0)):
-                    print("COUNTING PASSED")
-                else:
-                    print("COUNTING FAILED TO MATCH EXPECTED")
-                    print(input_filename)
-        except IOError:
-            print("Unable to find counts")
+                failures = []
+                for key in count_map:
+                    hdf_count = hdf.counts.get(count_map[key], 0)
+                    ref_count = count_data[key]["total"]
+                    if hdf_count != ref_count:
+                        failures.append("{} - Expected {}, got {}".format(input_filename, count_map[key], ref_count, hdf_count))
+
+                if failures:
+                    logger.error("FAILED COUNTING IN {}".format(input_filename))
+                    for f in failures:
+                        logger.error(f)
+        except IOError as e:
+            pass
+            logger.info("Unable to find counts at path {}".format(count_filename))
