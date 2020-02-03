@@ -11,7 +11,7 @@ import time
 import copy
 # from typing import List, Tuple
 from datetime import datetime
-from util import compute_status, is_waived, is_baseline_profile, find_direct_underlying_profiles
+from util import compute_status, is_waived, is_baseline_profile, find_direct_underlying_profiles, get_descendant_controls
 import random
 
 try:
@@ -146,9 +146,6 @@ class HDF:
         meta = copy.deepcopy(meta)
         meta["profile_sha256"] = profile["sha256"]
 
-        # Discover the profile children
-        profile_children = find_direct_underlying_profiles(self.hdf, profile)
-
         # Now pluck the controls
         controls = profile["controls"]
         profile["controls"] = []
@@ -157,7 +154,10 @@ class HDF:
         # labelling its subtype, baseline status
         profile_event_meta = copy.deepcopy(meta)
         profile_event_meta["subtype"] = "profile"
-        profile_event_meta["is_baseline"] = is_baseline_profile(profile)
+
+        # Set whether we're baseline
+        profile_event_meta["is_baseline"] = is_baseline_profile(
+            self.hdf, profile)
 
         # Set the meta and build the profile event
         profile["meta"] = profile_event_meta
@@ -165,12 +165,12 @@ class HDF:
 
         # Generate the control events
         control_events = [self.construct_control_event(
-            meta, profile, c, profile_children) for c in controls]
+            meta, profile, c) for c in controls]
 
         return profile_event, control_events
 
     # -> str:
-    def construct_control_event(self, meta, profile, control, profile_direct_children):
+    def construct_control_event(self, meta, profile, control):
         '''
         Constructs an event string for the control body
         '''
@@ -187,18 +187,32 @@ class HDF:
         control_event_meta["status"] = status
         control_event_meta["is_waived"] = is_waived(control)
 
-        # Compute if baseline. Do this by checking if any of our covered profiles contained this control id
-        is_baseline = True
-        for child in profile_direct_children:
-            for child_control in child["controls"]:
-                if child_control["id"] == control["id"]:
-                    is_baseline = False
+        # Compute descendants
+        descendants = get_descendant_controls(self.hdf, profile, control)
+        if descendants:
+            # We're a baseline if we have no children - if our # descendants is exactly one
+            control_event_meta["is_baseline"] = len(descendants) == 1
 
-        # Add if baseline
-        control_event_meta["is_baseline"] = is_baseline
+            # Build up our meta full code
+            full_code_segments = []
+            for profile, control in descendants:
+                name = profile["name"].strip()
+                code = (control["code"] or "N/A").strip()
+                full_code_segments.append(name + "\n" + code)
+            control_event_meta["full_code"] = "\n=====================\n".join(
+                full_code_segments)
 
-        # Count status if not baseline
-        if is_baseline:
+            # Also set our depth
+            control_event_meta["overlay_depth"] = len(descendants) - 1
+        else:
+            # Ambiguity tells us nothing except that we're definitely not the baseline
+            control_event_meta["is_baseline"] = False
+            name = profile["name"].strip()
+            code = (control["code"] or "N/A").strip()
+            control_event_meta["full_code"] = name + "\n" + code
+
+        # Count status iff baseline
+        if control_event_meta["is_baseline"]:
             self.counts[status] = self.counts.get(status, 0) + 1
 
         # Add meta to the control
@@ -208,15 +222,16 @@ class HDF:
 
 if __name__ == "__main__":
     # We don't care about anything below this, really
-    logging.basicConfig(level=logging.WARNING)
+    logging.basicConfig(level=logging.INFO)
 
     if len(sys.argv) < 2:
-        logger.error('Usage ./hdf_parser.py input_json_file_1 [input_json_file_2] [...]')
+        logger.error(
+            'Usage ./hdf_parser.py input_json_file_1 [input_json_file_2] [...]')
         sys.exit(1)
 
     input_filenames = sys.argv[1:]
     for input_filename in input_filenames:
-        print(' >>> Processing File {}'.format(input_filename))
+        logger.info(' >>> Processing File {}'.format(input_filename))
         # Read the file as json
         with open(input_filename, 'r') as f:
             try:
@@ -234,7 +249,8 @@ if __name__ == "__main__":
             continue
 
         # Derive the count filename. This sort of assumes the user is using the count data testing set
-        count_filename = input_filename.replace("/raw_data/", "/counts/") + ".info.counts"
+        count_filename = input_filename.replace(
+            "/raw_data/", "/counts/") + ".info.counts"
 
         # Try to find a counts file and compare to our results
         try:
@@ -252,12 +268,15 @@ if __name__ == "__main__":
                     hdf_count = hdf.counts.get(count_map[key], 0)
                     ref_count = count_data[key]["total"]
                     if hdf_count != ref_count:
-                        failures.append("{} - Expected {}, got {}".format(input_filename, count_map[key], ref_count, hdf_count))
+                        failures.append("{}:{} - Expected {}, got {}".format(
+                            input_filename, count_map[key], ref_count, hdf_count))
 
                 if failures:
-                    logger.error("FAILED COUNTING IN {}".format(input_filename))
+                    logger.error(
+                        "FAILED COUNTING IN {}".format(input_filename))
                     for f in failures:
                         logger.error(f)
         except IOError as e:
             pass
-            logger.info("Unable to find counts at path {}".format(count_filename))
+            logger.info(
+                "Unable to find counts at path {}".format(count_filename))

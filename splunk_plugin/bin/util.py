@@ -46,13 +46,6 @@ def is_waived(control):
         return False
 
 
-def is_baseline_profile(profile):
-    '''
-    Returns a boolean declaring whether this profile is a baseline profile in this report.
-    '''
-    return "depends" not in profile or profile["depends"] == []
-
-
 def find_direct_underlying_profiles(execution, profile):
     '''
     Searches execution to find all profiles that are directly depended on by the specified profile.
@@ -67,3 +60,62 @@ def find_direct_underlying_profiles(execution, profile):
         if profile.get("parent_profile") == profile_name:
             result.append(profile)
     return result
+
+
+def is_baseline_profile(execution, profile):
+    '''
+    Returns a boolean declaring whether this profile is a baseline profile in this report.
+    '''
+    return len(find_direct_underlying_profiles(execution, profile)) == 0
+
+
+def profile_control_lookup(profile, control_id):
+    '''
+    Fetches the specified control from profile, or None
+    '''
+    for ctrl in profile["controls"]:
+        if ctrl.get("id") == control_id:
+            return ctrl
+    return None
+
+
+def get_descendant_controls(execution, profile, control):
+    '''
+    Searches the execution for all controls that contribute to this control.
+    Returns this as a list of tuples, each representing the (profile, control) pairing of the control and the profile it came from.
+    That is, if this control is a level 3 overlay, this would return [Level 3 (the input control), Level 2 (mid-line), Level 1 (baseline)],
+    with each level containing both the control and the appropriate profile
+    If this control is a baseline, the result will simply be [the input control].
+
+    If an unclear dependency is found (e.g. multiple underlying profiles have controls with the same exact name, somehow),
+    then we return None
+
+    @param :execution: The execution to search through
+    @param :profile: The profile from whence profile came. Not strictly necessary, but saves some cycles
+    @param :control: The control whose lineage we desire
+    '''
+    # Init
+    result = [(profile, control)]
+    id = control["id"]
+
+    # Loop through descendants. The range 100 is to prevent us from getting DDOS'd by a malignant profile with circular parentage
+    for _ in range(100):
+        profiles_to_check = find_direct_underlying_profiles(execution, profile)
+        found = 0
+        for p in profiles_to_check:
+            possible_control = profile_control_lookup(p, id)
+
+            # If found, count, update our control, update our result, and update our profile
+            if possible_control:
+                found += 1
+                control = possible_control
+                profile = p
+                result.append((profile, control))
+                # Don't break - need to make sure we don't have an ambiguous case
+
+        # Verify that we only found one in children with this id. If more, return None
+        if found > 1:
+            return None
+        # If we didn't find any, then this is as far as we go
+        elif found == 0:
+            return result
