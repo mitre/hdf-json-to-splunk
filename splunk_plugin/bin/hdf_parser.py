@@ -11,7 +11,7 @@ import time
 import copy
 # from typing import List, Tuple
 from datetime import datetime
-from util import compute_status, is_waived, is_baseline_profile, find_direct_underlying_profiles, get_descendant_controls
+from util import compute_status, is_waived, is_baseline_profile, find_direct_underlying_profiles, get_descendant_controls, pluck_longest_full_code, pluck_meaningful_status
 import random
 
 try:
@@ -26,20 +26,27 @@ class HDF:
     def __init__(self, hdf, filename):
         self.hdf = hdf
         self.filename = filename
-        self._events = None
 
         # Both of the below times are in ISO format
         self.parse_time = None
         self.start_time = None
 
         # Our status counts, built as we parse
-        self.counts = None
+        self._counts = None
+
+        # Do parse
+        self._events = None
+        self.parse()
 
     @property
     def events(self):  # -> List[str]:
         if self._events is None:
             raise RuntimeError("You must call parse() before getting events")
         return self._events
+
+    def print_events(self):
+        for event in self.events:
+            logger.info('\n' + json.dumps(event, indent=2, sort_keys=True))
 
     def parse(self):
         """
@@ -50,7 +57,7 @@ class HDF:
         events = []
 
         # Reset counts
-        self.counts = {}
+        self._counts = {}
 
         # Set the parse time
         self.parse_time = datetime.now().isoformat()
@@ -107,8 +114,7 @@ class HDF:
             eval_event_meta = copy.deepcopy(meta)
             eval_event_meta["subtype"] = "header"
             data["meta"] = eval_event_meta
-            eval_event = json.dumps(data)
-            events.append(eval_event)
+            events.append(data)
 
             # Then each profile in turn
             for profile in profiles:
@@ -127,18 +133,19 @@ class HDF:
             events.append(profile_event)
             events += control_events
 
+        # Do the final pass on controls, to make sure full codes and statuses are synced
+        self.sync_controls(
+            [c for c in events if c["meta"]["subtype"] == "control"])
+
         # Save
-        self._events = events
+        self._events = [json.dumps(e) for e in events]
 
-    def print_events(self):
-        for event in self.events:
-            logger.info('\n' + json.dumps(event, indent=2, sort_keys=True))
+    # -> Tuple[dict, List[dict]]:
 
-    # -> Tuple[str, List[str]]:
     def construct_profile_events(self, meta, profile):
         '''
-        Constructs an event string for the profile body,
-        as well as a list of control event strings for each control within.
+        Constructs an event for the profile body,
+        as well as a list of control events for each control within.
         Returns in the format
         profile_event, control_events[]
         '''
@@ -161,7 +168,7 @@ class HDF:
 
         # Set the meta and build the profile event
         profile["meta"] = profile_event_meta
-        profile_event = json.dumps(profile)
+        profile_event = profile
 
         # Generate the control events
         control_events = [self.construct_control_event(
@@ -169,10 +176,10 @@ class HDF:
 
         return profile_event, control_events
 
-    # -> str:
+    # -> dict:
     def construct_control_event(self, meta, profile, control):
         '''
-        Constructs an event string for the control body
+        Constructs an event for the control body
         '''
         # Copy our meta, and label it with the control id
         meta = copy.deepcopy(meta)
@@ -191,34 +198,61 @@ class HDF:
         descendants = get_descendant_controls(self.hdf, profile, control)
         if descendants:
             # We're a baseline if we have no children - if our # descendants is exactly one
-            control_event_meta["is_baseline"] = len(descendants) == 1
+            is_baseline = len(descendants) == 1
 
             # Build up our meta full code
-            full_code_segments = []
+            full_code = []
             for profile, control in descendants:
                 name = profile["name"].strip()
                 code = (control["code"] or "N/A").strip()
-                full_code_segments.append(u"PROFILE: {}\n\n{}".format(name, code))
-            full_code = "\n=====================\n".join(full_code_segments)
-            control_event_meta["full_code"] = full_code
+                full_code.append(
+                    u"PROFILE: {}\n\n{}".format(name, code))
 
             # Also set our depth
-            control_event_meta["overlay_depth"] = len(descendants) - 1
+            overlay_depth = len(descendants) - 1
         else:
             # Ambiguity tells us nothing except that we're definitely not the baseline
-            control_event_meta["is_baseline"] = False
+            is_baseline = False
             name = profile["name"].strip()
             code = (control["code"] or "N/A").strip()
-            full_code = u"PROFILE: {}\n\n{}".format(name, code)
-            control_event_meta["full_code"] = full_code
+            full_code = [u"PROFILE: {}\n\n{}".format(name, code), " -- AMBIGUOUS -- "]
+            overlay_depth = None
+            
+        # Save full code
+        control_event_meta["is_baseline"] = is_baseline
+        control_event_meta["status"] = status
+        control_event_meta["full_code"] = full_code
+        control_event_meta["overlay_depth"] = overlay_depth
 
         # Count status iff baseline
-        if control_event_meta["is_baseline"]:
-            self.counts[status] = self.counts.get(status, 0) + 1
+        if is_baseline:
+            self._counts[status] = self._counts.get(status, 0) + 1
 
         # Add meta to the control
         control["meta"] = control_event_meta
-        return json.dumps(control)
+        return control
+
+    # -> void:
+    def sync_controls(self, control_events):
+        """
+        Modifies a list of control events in place, so that their statuses and full_code data are replicated
+        """
+        # Group controls by id
+        by_id = {}
+        for c in control_events:
+            id = c["id"]
+            if id in by_id:
+                by_id[id].append(c)
+            else:
+                by_id[id] = [c]
+
+        # Fix them
+        for id, id_events in by_id.items():
+            new_status = pluck_meaningful_status(id_events)
+            new_code = pluck_longest_full_code(id_events)
+            for id_event in id_events:
+                id_event["meta"]["status"] = new_status
+                id_event["meta"]["full_code"] = new_code
 
 
 if __name__ == "__main__":
@@ -266,7 +300,7 @@ if __name__ == "__main__":
                 count_data = json.load(f)
                 failures = []
                 for key in count_map:
-                    hdf_count = hdf.counts.get(count_map[key], 0)
+                    hdf_count = hdf._counts.get(count_map[key], 0)
                     ref_count = count_data[key]["total"]
                     if hdf_count != ref_count:
                         failures.append("{}:{} - Expected {}, got {}".format(

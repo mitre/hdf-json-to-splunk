@@ -119,3 +119,28 @@ def get_descendant_controls(execution, profile, control):
         # If we didn't find any, then this is as far as we go
         elif found == 0:
             return result
+
+
+def pluck_meaningful_status(controls):
+    """
+    Given a list of controls (presumably of the same ID), pick the first non-Profile-error status.
+    Failing that, just give profile error
+    """
+    for control in controls:
+        status = control["meta"]["status"]
+        if status != "Profile Error":
+            return status
+    return "Profile Error"
+
+
+def pluck_longest_full_code(controls):
+    """
+    Given a list of controls (presumably of the same ID), pick the first non-Profile-error status.
+    Failing that, just give [] (Should be impossible if any controls are provided!)
+    """
+    best = []
+    for control in controls:
+        fc = control["meta"]["full_code"]
+        if len(fc) > len(best):
+            best = fc
+    return best
