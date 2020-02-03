@@ -185,16 +185,19 @@ These steps require you to be an admin.
         // See Report schema for description
         "hdf_splunk_schema": "",
         // The controls computed status, based on result statuses. See https://github.com/mitre/inspecjs/blob/master/src/compat_wrappers.ts for explanation
+        // Note that overlays will inherit the baseline status, instead of the "proper" result which would always just be Profile Error
         "status": "Passed | Failed | Not Applicable | Not Reviewed | Profile Error",
         // Whether or not this control was waived
         "is_waived": true, // or false
         // Whether this control is the baseline - IE, is it an overlay of a different control in this file?. Can differ from its containing profiles is_baseline
         "is_baseline": true, // or false!
-        // How much of an overlay this control is. 0 <==> is_baseline, 1 implies direct overlay to baseline, etc. Will be missing/null if could not determine overlay heirarchy
+        // How much of an overlay this control is. 0 <==> is_baseline, 1 implies direct overlay to baseline, etc. Will be null if ambiguous
         "overlay_depth": 0, // or 1, 2, 3, ...
-        // The full code of this control, created by appending overlay code sections all the way down to baseline
-        // Don't expect this to have a reliable structure / attempt to parse it directly. Purely for convenience
-        "full_code": "overlay2_name: code \n overlay1_name: code, \n baseline_name: code "
+        // The full code of this control, created by consolidating overlay code sections all the way down to baseline
+        // Note that the baseline will include overlaying code here as well - in generall, all controls with the same id will have
+        // the same data here.
+        // Do not expect this to have a reliable structure / attempt to parse it directly. Purely for convenience
+        "full_code": ["overlay2_name: code", "overlay1_name: code", "baseline_name: code"]
     },
     "code": "The code for the control, not including over/underlays!",
     "desc": "The description of the control",
