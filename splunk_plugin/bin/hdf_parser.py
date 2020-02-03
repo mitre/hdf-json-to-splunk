@@ -198,9 +198,9 @@ class HDF:
             for profile, control in descendants:
                 name = profile["name"].strip()
                 code = (control["code"] or "N/A").strip()
-                full_code_segments.append(name + "\n" + code)
-            control_event_meta["full_code"] = "\n=====================\n".join(
-                full_code_segments)
+                full_code_segments.append(u"PROFILE: {}\n\n{}".format(name, code))
+            full_code = "\n=====================\n".join(full_code_segments)
+            control_event_meta["full_code"] = full_code
 
             # Also set our depth
             control_event_meta["overlay_depth"] = len(descendants) - 1
@@ -209,7 +209,8 @@ class HDF:
             control_event_meta["is_baseline"] = False
             name = profile["name"].strip()
             code = (control["code"] or "N/A").strip()
-            control_event_meta["full_code"] = name + "\n" + code
+            full_code = u"PROFILE: {}\n\n{}".format(name, code)
+            control_event_meta["full_code"] = full_code
 
         # Count status iff baseline
         if control_event_meta["is_baseline"]:
