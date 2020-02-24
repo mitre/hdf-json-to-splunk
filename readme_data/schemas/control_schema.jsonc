@@ -50,13 +50,28 @@
     ],
     "results": [
         {
-            "code_desc": "Description of the control",
-            "run_time": 1.234, // How many seconds it took to run
-            "start_time": "Timestamp in ISO format - e.g. 2018-11-21T11:34:45-05:00",
-            // The result of the control - did the test pass, fail, or was it ignored?
-            "status": "passed | failed | passed"
+            // Optional: The inspec provided description of this result. Not reliably formatted
+            "code_desc": "Auditd Rules with file == \"a.txt\" permissions should not cmp == []",
+            // Optional: How many seconds it took to run this result segment
+            "run_time": 0.001234, 
+            // Required: The start time of this control, in ISO format
+            "start_time": "2018-11-21T11:34:45-05:00",
+            // Required: The result of the control - did the test pass, fail, or was it ignored?
+            "status": "passed | failed | skipped",
+            // Optional: The inspec resource that generated this result. See https://www.inspec.io/docs/reference/resources/
+            // E.g. if describe(<resource>)
+            "resource": "res",
+            // Optional: Message describing the result of the test, in words.
+            "message": "\nexpected it not to be == []\n     got: []\n\n(compared using `cmp` matcher)\n",
+            // Optional: If skipped, a description of why
+            "skip_message": "LDAP not enabled using any known mechanisms, this control is Not Applicable.",
+            // Optional: If an exception occurred, the content of that exception message
+            "exception": "RSpec::Core::MultipleExceptionError",
+            // Optional / Nullable: If an exception occurred, the backtrace to that exception
+            "backtrace": null // Or an array of strings  ["line1", "line2", ...]
+
+            // There will be as many result objects in this array as there are inspec test blocks
         }
-        // Repeated for as many control block results there are
     ],
     "source_location": {
         // The line number at which it was found in the given file
@@ -76,7 +91,9 @@
             // Typically, the last tag is the revision
             "Rev_4"
         ],
-        "other_tags": "There can be as many or as few tags as the profile developer wishes"
-        // ...
+        "other_tag_0": "There can be as many or as few tags as the profile developer wishes",
+        "my_tag": "e.x. 1",
+        "my_tag_3": "e.x. 2"
+        // ... etc.
     }
 }
