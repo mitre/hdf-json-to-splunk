@@ -4,6 +4,16 @@ The format in which these are uploaded guarantees that they will not be truncate
 
 Credit to Dan Mirsky and Yarick Tsagoyko of DigitalInfuzion for the initial framework for the plugin, including the S3 integration and the automated file scanning python input, as well as for their assistance and advising on how best to develop the event schema.
 
+## Supported data formats
+
+This plugin supports all data that is able to be read by Heimdall Lite, found here: http://heimdall-lite.mitre.org 
+
+More generally, it will support any data in the broader category of Heimdall Data Format (HDF) data, which is a superset of the Inspec JSON output produced by
+
+`inspec exec <profile> --reporter json`
+
+We recommend uploading data from inspec with as little modification as possible.
+
 ## Installation
 
 These steps require you to be an admin.
