@@ -1,3 +1,11 @@
+# <u>[DEPRECATED]</u>
+
+This package is deprecated and no longer supported or actively developed by MITRE. Use is NOT RECOMMENDED.
+
+This plugin's features are now natively available in [Heimdall2](https://github.com/mitre/heimdall2) and the [SAF CLI](https://github.com/mitre/saf). 
+
+---
+
 # hdf-json-to-splunk
 Splunk plugin to upload Inspec output, Heimdall Tools output, and any other HDF format files to Splunk, for consumption by Heimdall Lite.
 The format in which these are uploaded guarantees that they will not be truncated, that they are relatively easy to search, and that they can be easily reconstructed into the original JSON (with filters applied, if one so desires).
