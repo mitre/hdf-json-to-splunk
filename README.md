@@ -283,9 +283,18 @@ These steps require you to be an admin.
 }
 ```
 
+### Contributors  
+
+- Charles Hu [Charles Hu](https://github.com/charleshu-8)
+- Jacob Henry [Jacob Henry](https://github.com/Mitriol)
+- Aaron Lippold [Aaron Lippold](https://github.com/aaronlippold)
+- Will Dower [Will Dower](https://github.com/wdower)
+- Yarick Tsagoyko [Yarick Tsagoyko](https://github.com/yarick)
+- Dan Mirskiy [Dan Mirskiy](https://github.com/mirskiy)
+
 ### NOTICE
 
-© 2019 The MITRE Corporation.
+© 2023 The MITRE Corporation.
 
 Approved for Public Release; Distribution Unlimited. Case Number 18-3678.
 
